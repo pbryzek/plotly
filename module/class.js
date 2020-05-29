@@ -157,3 +157,34 @@ function buildBacteriaCountBubblePlot(x,y,size,color){
 
     Plotly.plot("bubble", [bubbleTrace]);
 }
+
+function init() {
+    data = [{
+        x: [],
+        y: []
+    }];
+    Plotly.newPlot("plot", data);
+}
+function updatePage() {
+    var dropdown = d3.selectAll("#selectOption").node();
+    var dataset = dropdown.property("value");
+
+    var x = [];
+    var y = [];
+
+    if (dataset === 'usa'){
+        x = [1,2,3,4,5];
+        y = [1,2,4,8,16];
+    } else if (dataset === 'uk'){
+        x = [10,20,30,40,50];
+        y = [1,10,100,1000,10000];
+    } else if (dataset === 'canada'){
+
+    }
+    Plotly.restyle("plot", "x", [x]);
+    Plotly.restyle("plot", "y", [y]);
+}
+
+d3.selectAll("body").on("change", updatePage);
+
+IntersectionObserver();
