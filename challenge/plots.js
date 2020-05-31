@@ -76,14 +76,44 @@ function buildBubblePlot(otu_ids, sample_values, otu_labels) {
     };
     let data_bubble = [trace_bubble];
 
-    let layout_bubble = {
-        title: '',
-        xaxis: {
-            "title": "OTU ID"
-        },
-        showlegend: false
-    };
+    let layout_bubble = createChartLayout('OTUs from Samples', 'OTU IDs', 'Sample Values');
+
     Plotly.newPlot("bubble", data_bubble, layout_bubble);
+}
+
+function createChartLayout(title, xaxis, yaxis) {
+    let layout = {
+        title: {
+            text: title,
+            font: {
+                family: 'Courier New, monospace',
+                size: 20
+            },
+            xref: 'paper',
+            x: 0.05,
+        },
+        xaxis: {
+            title: {
+                text: xaxis,
+                font: {
+                    family: 'Courier New, monospace',
+                    size: 18,
+                    color: '#7f7f7f'
+                }
+            },
+        },
+        yaxis: {
+            title: {
+                text: yaxis,
+                font: {
+                    family: 'Courier New, monospace',
+                    size: 18,
+                    color: '#7f7f7f'
+                }
+            }
+        }
+    };
+    return layout;
 }
 
 //Function to build out the bar chart
@@ -104,7 +134,9 @@ function buildBarChart(otu_ids, sample_values, otu_labels) {
         type: "bar"
     };
     let data = [trace];
-    Plotly.newPlot("bar", data);
+    let layout = createChartLayout('Top 10 OTUs from Samples', 'Sample Values', 'OTU Sample ID');
+
+    Plotly.newPlot("bar", data, layout);
 }
 
 //Function to build out the Gauge
@@ -204,8 +236,14 @@ function buildGaugePlot(wfreq) {
                 color: '850000'
             }
         }],
-        height: 500,
-        width: 500,
+        title: {
+            text: "Belly Button wFrequency Per Week", font: {
+                family: 'Courier New, monospace',
+                size: 12
+            }, 
+            xref: 'paper',
+            x: 0.05
+        },
         xaxis: {
             zeroline: false, showticklabels: false,
             showgrid: false, range: [-1, 1]
@@ -218,16 +256,17 @@ function buildGaugePlot(wfreq) {
     Plotly.newPlot('gauge', data, layout);
 }
 
+//Function to call the other plot methods to build out the page
 function buildCharts(sampleResult, wfreq) {
     //Get the needed datapoints from the sampleResult object
     let otu_labels = sampleResult.otu_labels;
     let otu_ids = sampleResult.otu_ids;
     let sample_values = sampleResult.sample_values;
-
+    //Bar Chart
     buildBarChart(otu_ids, sample_values, otu_labels);
-
+    //Bubble Chart
     buildBubblePlot(otu_ids, sample_values, otu_labels);
-
+    //Gauge Chart
     buildGaugePlot(wfreq);
 }
 
