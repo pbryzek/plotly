@@ -1,6 +1,7 @@
+//Init function is called when the page loads 
 function init() {
     let selector = d3.select("#selDataset");
-
+    //Read the samples.json file and populate the selector
     d3.json("samples.json").then((data) => {
         let sampleNames = data.names;
         sampleNames.forEach((sample) => {
@@ -9,29 +10,36 @@ function init() {
                 .text(sample)
                 .property("value", sample);
         });
-    })
+        //Set page to the first value of the select
+        let defaultVal = selector.node().value;
+        buildPage(defaultVal);
+    });
 }
 
+//Function that is called when the user selects a different value in the select
 function optionChanged(newSample) {
-    buildMetadata(newSample);
+    buildPage(newSample);
 }
 
-function buildMetadata(sampleId) {
+//Main builder function that will read the data from samples.json and build the page based on the sampleID selected
+function buildPage(sampleId) {
     d3.json("samples.json").then((data) => {
         wfreq = handleMetadata(data.metadata, sampleId);
-        console.log("buildMetadata");
         handleSample(data.samples, sampleId, wfreq);
     });
 }
 
+//Function to get the data and call the buildcharts function
 function handleSample(samples, sampleId, wfreq) {
-    console.log("handleSample");
+    //Filter out the data based on the sampleId
     let sampleArray = samples.filter(sampleObj => sampleObj.id == sampleId);
     let sampleResult = sampleArray[0];
     buildCharts(sampleResult, wfreq);
 }
 
+//Handle the metadata and build the panel
 function handleMetadata(metadata, sampleId) {
+    //Filter out the data based on the sampleId
     let resultArray = metadata.filter(sampleObj => sampleObj.id == sampleId);
     let result = resultArray[0];
     buildPanel(result);
@@ -39,9 +47,10 @@ function handleMetadata(metadata, sampleId) {
     return result.wfreq;
 }
 
+//Function to populate the metadata panel
 function buildPanel(result) {
     let panel = d3.select("#sample-metadata");
-
+    //Clear the panel first
     panel.html("");
     panel.append("h6").text("ID:" + result.id);
     panel.append("h6").text("ETHNICITY:" + result.ethnicity);
@@ -52,7 +61,54 @@ function buildPanel(result) {
     panel.append("h6").text("WFREQ:" + result.wfreq);
 }
 
-function buildGauge(wfreq) {
+//Function to build out the bubble plot
+function buildBubblePlot(otu_ids, sample_values, otu_labels) {
+    //Plot the bubble chart
+    let trace_bubble = {
+        x: otu_ids,
+        y: sample_values,
+        mode: 'markers',
+        marker: {
+            size: sample_values,
+            color: otu_ids
+        },
+        text: otu_labels
+    };
+    let data_bubble = [trace_bubble];
+
+    let layout_bubble = {
+        title: '',
+        xaxis: {
+            "title": "OTU ID"
+        },
+        showlegend: false
+    };
+    Plotly.newPlot("bubble", data_bubble, layout_bubble);
+}
+
+//Function to build out the bar chart
+function buildBarChart(otu_ids, sample_values, otu_labels) {
+    //Get the results in descending order and only take the top 10 entries
+    let otu_ids_top = otu_ids.slice(0, 10).reverse();
+    let sample_values_top = sample_values.slice(0, 10).reverse();
+    let otu_labels_top = otu_labels.slice(0, 10).reverse();
+    //Append the OTU string to the beginning of the out_id
+    let otu_ids_top_display = otu_ids_top.map(otu_id => "OTU " + otu_id);
+
+    //Set the orientation to horizontal
+    let trace = {
+        x: sample_values_top,
+        y: otu_ids_top_display,
+        orientation: "h",
+        text: otu_labels_top,
+        type: "bar"
+    };
+    let data = [trace];
+    Plotly.newPlot("bar", data);
+}
+
+//Function to build out the Gauge
+function buildGaugePlot(wfreq) {
     let trace1 = {
         type: 'scatter',
         x: [0], y: [0],
@@ -62,7 +118,6 @@ function buildGauge(wfreq) {
         text: wfreq,
         hoverinfo: 'text+name'
     };
-
     let trace2 = {
         "values": [
             50 / 9,
@@ -93,15 +148,15 @@ function buildGauge(wfreq) {
         textposition: "inside",
         marker: {
             colors: [
-                "rgba(14, 127, 0, .5)",
-                "rgba(110, 154, 22, .5)",
-                "rgba(170, 202, 42, .5)",
-                "rgba(202, 209, 95, .5)",
-                "rgba(210, 206, 145, .5)",
-                "rgba(232, 226, 202, .5)",
-                "rgba(232, 226, 202, .5)",
-                "rgba(232, 226, 202, .5)",
-                "rgba(232, 226, 202, .5)",
+                "rgba(133, 180, 138, .5)",
+                "rgba(138, 187, 143, .5)",
+                "rgba(140, 191, 136, .5)",
+                "rgba(186, 202, 145, .5)",
+                "rgba(215, 226, 157, .5)",
+                "rgba(229, 231, 181, .5)",
+                "rgba(232, 229, 203, .5)",
+                "rgba(242, 240, 229, .5)",
+                "rgba(246, 242, 236, .5)",
                 "rgba(255, 255, 255, 0)"
             ]
         },
@@ -121,29 +176,26 @@ function buildGauge(wfreq) {
         hole: .5,
         type: "pie",
         showlegend: false
-    }
+    };
     let data = [trace1, trace2];
-
-    // Enter a speed between 0 and 180
-    var level = (wfreq*20);
-
+    // Enter a speed between 0 and 180, multiply by 20 since we are dealing with 0-9 scale to get a max of 180
+    let level = (wfreq * 20);
     // Trig to calc meter point
-    var degrees = 180 - level,
-        radius = .5;
-    var radians = degrees * Math.PI / 180;
-    var x = radius * Math.cos(radians);
-    var y = radius * Math.sin(radians);
-    var path1 = (degrees < 45 || degrees > 135) ? 'M -0.0 -0.05 L 0.0 0.05 L ' : 'M -0.05 -0.0 L 0.05 0.0 L ';
+    let degrees = 180 - level;
+    let radius = .5;
+    let radians = degrees * Math.PI / 180;
+    let x = radius * Math.cos(radians);
+    let y = radius * Math.sin(radians);
+    let path1 = (degrees < 45 || degrees > 135) ? 'M -0.0 -0.05 L 0.0 0.05 L ' : 'M -0.05 -0.0 L 0.05 0.0 L ';
     // Path: may have to change to create a better triangle
-    var mainPath = path1,
+    let mainPath = path1,
         pathX = String(x),
         space = ' ',
         pathY = String(y),
         pathEnd = ' Z';
-    var path = mainPath.concat(pathX, space, pathY, pathEnd);
-    console.log(path);
+    let path = mainPath.concat(pathX, space, pathY, pathEnd);
 
-    var layout = {
+    let layout = {
         shapes: [{
             type: 'path',
             path: path,
@@ -166,124 +218,17 @@ function buildGauge(wfreq) {
     Plotly.newPlot('gauge', data, layout);
 }
 
-function sortSamples(a, b) {
-    // Enter a speed between 0 and 180
-    var level = 90;
-
-    // Trig to calc meter point
-    var degrees = 180 - level,
-        radius = .5;
-    var radians = degrees * Math.PI / 180;
-    var x = radius * Math.cos(radians);
-    var y = radius * Math.sin(radians);
-    var path1 = (degrees < 45 || degrees > 135) ? 'M -0.0 -0.025 L 0.0 0.025 L ' : 'M -0.025 -0.0 L 0.025 0.0 L ';
-    // Path: may have to change to create a better triangle
-    var mainPath = path1,
-        pathX = String(x),
-        space = ' ',
-        pathY = String(y),
-        pathEnd = ' Z';
-    var path = mainPath.concat(pathX, space, pathY, pathEnd);
-
-    var data = [{
-        type: 'scatter',
-        x: [0], y: [0],
-        marker: { size: 14, color: '850000' },
-        showlegend: false,
-        name: 'speed',
-        text: level,
-        hoverinfo: 'text+name'
-    },
-    {
-        values: [1, 1, 1, 1, 4],
-        rotation: 90,
-        text: ['Excellent', 'Average', 'Warning', 'Poor', ''],
-        textinfo: 'text',
-        textposition: 'inside',
-        marker: {
-            colors: ['rgba(14, 127, 0, .5)', 'rgba(110, 154, 22, .5)',
-                'rgba(249, 168, 37, .5)', 'rgba(183,28,28, .5)',
-                'rgba(0, 0, 0, 0.5)']
-        },
-        hoverinfo: 'label',
-        hole: .5,
-        type: 'pie',
-        showlegend: false
-    }];
-
-    var layout = {
-        shapes: [{
-            type: 'path',
-            path: path,
-            fillcolor: '850000',
-            line: {
-                color: '850000'
-            }
-        }],
-        height: 400,
-        width: 400,
-        xaxis: {
-            zeroline: false, showticklabels: false,
-            showgrid: false, range: [-1, 1]
-        },
-        yaxis: {
-            zeroline: false, showticklabels: false,
-            showgrid: false, range: [-1, 1]
-        }
-    };
-
-    Plotly.newPlot('myDiv', data, layout);
-
-}
-
 function buildCharts(sampleResult, wfreq) {
-    console.log("buildCharts");
-    //sampleResult = sampleResult.sort(sortSamples);
-    //Look back to sort object
+    //Get the needed datapoints from the sampleResult object
     let otu_labels = sampleResult.otu_labels;
-    let otu_labels_top = otu_labels.slice(0, 10).reverse();
     let otu_ids = sampleResult.otu_ids;
     let sample_values = sampleResult.sample_values;
 
-    let otu_ids_top = otu_ids.slice(0, 10).reverse();
-    let otu_ids_display = otu_ids_top.map(otu_id => "OTU " + otu_id);
-    let sample_values_top = sample_values.slice(0, 10).reverse();
+    buildBarChart(otu_ids, sample_values, otu_labels);
 
-    let trace = {
-        x: sample_values_top,
-        y: otu_ids_display,
-        orientation: "h",
-        text: otu_labels_top,
-        type: "bar"
-    };
+    buildBubblePlot(otu_ids, sample_values, otu_labels);
 
-    console.log(trace);
-    let data = [trace];
-    Plotly.newPlot("bar", data);
-
-    //Do bubble chart
-    var trace_bubble = {
-        x: otu_ids,
-        y: sample_values,
-        mode: 'markers',
-        marker: {
-            size: sample_values,
-            color: otu_ids
-        },
-        text: otu_labels
-    };
-    let data_bubble = [trace_bubble];
-
-    var layout_bubble = {
-        title: '',
-        xaxis: {
-            "title": "OTU ID"
-        },
-        showlegend: false
-    };
-    Plotly.newPlot("bubble", data_bubble, layout_bubble);
-
-    buildGauge(wfreq);
+    buildGaugePlot(wfreq);
 }
 
 init();
